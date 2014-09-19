@@ -51,7 +51,7 @@ required one is as follows:
 WekaDancer [-h InfluxDB_host] 
            [-d InfluxDB_database]
            [-s InfluxDB_series]
-           [-f ARFF_filenam]
+           [-f ARFF_filename]
            [-a algorithm]
            [-b begin_timestamp]
            [-e end_timestamp]
