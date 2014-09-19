@@ -2,9 +2,8 @@ WekaDancer
 ==========
 Utilizing the Weka learning library for the DANCER Project
 
-
 =======================
-|       Outline       |
+        Outline       
 =======================
 This project is using the Weka machine learning library to find patterns
 in the everyday operation performed by people in their daily life. The
@@ -25,9 +24,8 @@ context one, plus the suffix '.actions.'. The format of this time series is
 the following:
   time | sequence_number | action | device | parameters | source
 
-
 =======================
-|    Installation     |
+     Installation     
 =======================
 WekaDancer is build on the Eclipse IDE, so you can just download the project 
 as a zip or clone the git repository. Then open Eclipse and import the 
@@ -35,7 +33,6 @@ downlaod as an existing project:
 -> Select the root directory if you clone the git repository
 or
 -> Select the archive file if you downloaded as a zip
-
 
 =======================
 |    Configuration    |
@@ -51,14 +48,14 @@ It is also compatible with version 1.8 but further testing is needed and
 minor problems might appear.
 
 =======================
-|      Running        |
+       Running        
 =======================
 To run the project a set of argument should be given. An example is of the
 required one is as follows:
-WekaDancer [-h <InfluxDB_host>] 
-           [-d <InfluxDB_database>]
-           [-s <InfluxDB_series>]
-           [-f <ARFF_filename>]
-           [-a <algorithm>]
-           [-b <begin_timestamp>]
-           [-e <end_timestamp>]
+WekaDancer [-h InfluxDB_host] 
+           [-d InfluxDB_database]
+           [-s InfluxDB_serie]
+           [-f ARFF_filenam]
+           [-a algorithm]
+           [-b begin_timestamp]
+           [-e end_timestamp]
