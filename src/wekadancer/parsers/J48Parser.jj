@@ -1,0 +1,200 @@
+/* calculator0.jj An interactive calculator. */
+
+
+options {
+	STATIC = false ;
+}
+PARSER_BEGIN(J48Parser)
+	package wekadancer.parsers;
+
+	import PandaLib.*;
+	
+	public class J48Parser {
+	
+		public Group group;
+		public String device;
+		public int PIDCount = 1;
+		
+		public J48Parser(String device, java.io.InputStream stream) {
+			this.device = device;
+			group = new Group("Disc_"+this.device, "0");
+			jj_input_stream = new SimpleCharStream(stream, 1, 1);
+			token_source = new J48ParserTokenManager(jj_input_stream);
+			token = new Token();
+			jj_ntk = -1;
+			jj_gen = 0;
+			for (int i = 0; i < jj_la1.length; i++)
+				jj_la1[i] = -1;
+		}
+
+		public J48Parser(String device, java.io.Reader stream) {
+			this.device = device;
+			group = new Group("Disc_"+this.device, "0");
+			jj_input_stream = new SimpleCharStream(stream, 1, 1);
+			token_source = new J48ParserTokenManager(jj_input_stream);
+			token = new Token();
+			jj_ntk = -1;
+			jj_gen = 0;
+			for (int i = 0; i < jj_la1.length; i++)
+				jj_la1[i] = -1;
+		}
+	}
+PARSER_END(J48Parser)
+
+SKIP : { " " }
+SKIP : { "\t" | "\n" | "\r" | "\f" }
+TOKEN : { < CHILD : "|" > }
+TOKEN : { < THEN : ( ":" | "=>") > }
+TOKEN : { < AND : ("AND" | "and") > }
+TOKEN : { < OR : ("OR" | "or") > }
+TOKEN : { < OPR : "(" > }
+TOKEN : { < CPR : ")" > }
+TOKEN : { < DIV : "/" > }
+TOKEN : { < GT : ">" > }
+TOKEN : { < LT : "<" > }
+TOKEN : { < EQ : ("==" | "=") > }
+TOKEN : { < LE : "<=" > }
+TOKEN : { < GE : ">=" > }
+TOKEN : { < NE : "!=" > }
+TOKEN : { < INT : "0" | ("-")? ["1"-"9"](["0"-"9"])* > }
+TOKEN : { < HEX : ["0"-"9","A"-"F"] (["0"-"9","A"-"F"])* > }
+TOKEN : { < ID : (["a"-"z","A"-"Z","_","0"-"9"])*  (["a"-"z","A"-"Z","_"]) (["a"-"z","A"-"Z","_","0"-"9"])* > }
+TOKEN : { < BOOL : "true" | "false" | "TRUE" | "FALSE" > }
+TOKEN : { < FLOAT : ("-")? (["0"-"9"])+ "." (["0"-"9"])+ ("E" ("-")? (["0"-"9"])+)? ("D")? > }
+TOKEN : { < STRING : "\"" (["a"-"z","A"-"Z","_","0"-"9",":","'","$","%"])* "\"" > }
+TOKEN : { < FUNCTION : ( <ID>  | <HEX> ) ("." <ID>)? <OPR> ( (<ID> | <STRING> | <INT> | <HEX> ){1} ("," (<INT> | <ID> | <STRING> | <HEX> ){1} )*)? <CPR> > }
+
+
+void RuleSet() :
+{
+	Condition ci = null;
+}
+{
+	<THEN>
+	Function()
+	|
+	(
+		Rule(ci)
+	)*
+	
+	<EOF>
+}
+
+
+void Rule(ConditionItem ci) :
+{
+	Policy policy = null;
+	Condition condition =  null;
+	PolicyAction a = null;
+}
+{	
+	condition = Condition() 
+	(
+		<THEN>
+		a = Function() 
+		{
+			policy = new Policy();
+			policy.setPID(String.format("PID%04d", PIDCount++));
+			//Copy the previous conditions
+			if(ci instanceof ConditionGroup) {
+				policy.setConditions(new ConditionGroup((ConditionGroup)ci));
+			}
+			else {
+				if(ci!=null) {
+					ConditionGroup cg = new ConditionGroup();
+					cg.addCondition(ci);
+					policy.setConditions(cg);
+				}
+			}
+			//Add the new condition
+			if(policy.getConditions()!=null)
+				policy.getConditions().addCondition(condition);
+			else
+				policy.setConditions(condition);
+			//Add the action in the policy
+			policy.setAction(a);
+			//Add the policy in the group
+			group.addPolicy(policy);
+		}
+		|
+		(
+			(<CHILD>)+
+			{
+				if(ci instanceof ConditionGroup) {
+					((ConditionGroup)ci).addCondition(condition);
+					((ConditionGroup)ci).setConjunction("AND");
+				}
+				else {
+					if(ci==null) {	
+						ci = condition;
+					}
+					else {
+						ConditionGroup newgroup = new ConditionGroup();
+						newgroup.addCondition((Condition)ci);
+						newgroup.addCondition(condition);
+						newgroup.setConjunction("AND");
+						ci = newgroup;
+					}
+				}
+			}
+			Rule(ci)
+		)+
+	)
+}
+
+
+Condition Condition() :
+{
+	Condition c;
+	Token id;
+	Token opp;
+	Token v;
+}
+{
+	id = <ID>
+	( opp = <GT> | opp = <LT> | opp = <EQ> | opp = <LE> | opp =  <GE> | opp = <NE>)
+	( v = <FLOAT>  | v = <INT> | v = <ID> )
+	
+	{
+		c = new Condition(id.image,opp.image,v.image);
+		return c;
+	}
+}
+
+
+
+PolicyAction Function() :
+{
+	Token f;
+}
+{
+	
+	f = <FUNCTION>
+	Success()
+	{ 
+		//Create a new action
+		PolicyAction action = new PolicyAction(this.device,"Unknown",f.image,"");	
+		return action;
+	} 
+}
+
+
+void Success() :
+{ 
+	Token t;
+	Token p;
+}
+{
+	<OPR>
+	t = <FLOAT>
+	(
+		<DIV> 
+		p = <FLOAT>
+	)*
+	<CPR>
+}
+
+
+
+
+
