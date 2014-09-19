@@ -2,41 +2,38 @@ WekaDancer
 ==========
 Utilizing the Weka learning library for the DANCER Project
 
-=======================
-        Outline       
-=======================
+
+## Outline      
 This project is using the Weka machine learning library to find patterns
 in the everyday operation performed by people in their daily life. The
 data used, should be imported before hand in an InfluxDB library. The 
 data for each one case, comprise of two time series, the context and the 
 actions.
 
-The Context
+### The Context
 This InfluxDB series contains the data from sensors along with their
 timestamps. To make their processing easier, all data are included with
 a single timestamp. If a reading is non existent for a specific time,
 the 0 or NaN can be set a the value. The identifier of each sensor, is
 set as the collumn header for the respecitive values.
 
-The Actions
+### The Actions
 The actions are stored in a separete time series with the same name as the
 context one, plus the suffix '.actions.'. The format of this time series is 
 the following:
   time | sequence_number | action | device | parameters | source
 
-=======================
-     Installation     
-=======================
+
+## Installation     
 WekaDancer is build on the Eclipse IDE, so you can just download the project 
 as a zip or clone the git repository. Then open Eclipse and import the 
 downlaod as an existing project:
--> Select the root directory if you clone the git repository
+1. Select the root directory if you clone the git repository
 or
--> Select the archive file if you downloaded as a zip
+2. Select the archive file if you downloaded as a zip
 
-=======================
-|    Configuration    |
-=======================
+
+## Configuration    
 Multiple libraries are required so load Weka and this is why these have
 been included in the repository, underl the lib/ directory.
 
@@ -47,9 +44,8 @@ both Sun and OpenJRE should work.
 It is also compatible with version 1.8 but further testing is needed and
 minor problems might appear.
 
-=======================
-       Running        
-=======================
+
+## Running        
 To run the project a set of argument should be given. An example is of the
 required one is as follows:
 WekaDancer [-h InfluxDB_host] 
