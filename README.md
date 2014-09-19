@@ -50,7 +50,7 @@ To run the project a set of argument should be given. An example is of the
 required one is as follows:
 WekaDancer [-h InfluxDB_host] 
            [-d InfluxDB_database]
-           [-s InfluxDB_serie]
+           [-s InfluxDB_series]
            [-f ARFF_filenam]
            [-a algorithm]
            [-b begin_timestamp]
