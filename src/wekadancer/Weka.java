@@ -25,8 +25,6 @@ import weka.core.converters.ConverterUtils.DataSource;
 import weka.classifiers.evaluation.Evaluation;
 import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.J48;
-import context.arch.intelligibility.expression.DNF;
-import context.arch.intelligibility.weka.j48.*;
 
 
 /**
