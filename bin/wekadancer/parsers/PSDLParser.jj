@@ -1,0 +1,400 @@
+/* calculator0.jj An interactive calculator. */
+
+
+options {
+	STATIC = false ;
+}
+PARSER_BEGIN(PSDLParser)
+	package PSDL;
+
+	import PandaLib.*;
+
+
+	public class PSDLParser {
+	
+	public PervasiveService curPS;
+
+	PSDLParser(PervasiveService parent, java.io.InputStream stream) {
+		curPS = parent;
+		jj_input_stream = new SimpleCharStream(stream, 1, 1);
+		token_source = new PSDLParserTokenManager(jj_input_stream);
+		token = new Token();
+		jj_ntk = -1;
+		jj_gen = 0;
+		for (int i = 0; i < jj_la1.length; i++)
+			jj_la1[i] = -1;
+	}
+
+	public PSDLParser(PervasiveService parent, java.io.Reader stream) {
+		curPS = parent ;
+		jj_input_stream = new SimpleCharStream(stream, 1, 1);
+		token_source = new PSDLParserTokenManager(jj_input_stream);
+		token = new Token();
+		jj_ntk = -1;
+		jj_gen = 0;
+		for (int i = 0; i < jj_la1.length; i++)
+			jj_la1[i] = -1;
+	}
+	}
+PARSER_END(PSDLParser)
+
+SKIP : { " " }
+SKIP : { "\t" | "\n" | "\r" | "\f" }
+TOKEN : { < PS : "PS" > }
+TOKEN : { < ENDPS : "ENDPS" > }
+TOKEN : { < GROUP : "GROUP" > }
+TOKEN : { < BEGIN : "BEGIN_G" > }
+TOKEN : { < END : "END_G" > }
+TOKEN : { < IF : "IF" > }
+TOKEN : { < THEN : "THEN" > }
+TOKEN : { < AND : "AND" > }
+TOKEN : { < OR : "OR" > }
+TOKEN : { < OBR : "{" > }
+TOKEN : { < CBR : "}" > }
+TOKEN : { < GT : ">" > }
+TOKEN : { < LT : "<" > }
+TOKEN : { < EQ : "==" > }
+TOKEN : { < LE : "<=" > }
+TOKEN : { < GE : ">=" > }
+TOKEN : { < NE : "!=" > }
+TOKEN : { < INT : "0" | ("-")? ["1"-"9"](["0"-"9"])* > }
+TOKEN : { < HEX : ["0"-"9","A"-"F"] (["0"-"9","A"-"F"])* > }
+TOKEN : { < ID : (["a"-"z","A"-"Z","_","0"-"9"])*  (["a"-"z","A"-"Z","_"]) (["a"-"z","A"-"Z","_","0"-"9"])* > }
+TOKEN : { < BOOL : "true" | "false" | "TRUE" | "FALSE" > }
+TOKEN : { < FLOAT : ("-")? (["0"-"9"])+ "." (["0"-"9"])+ ("E" ("-")? (["0"-"9"])+)? ("D")? > }
+TOKEN : { < STRING : "\"" (["a"-"z","A"-"Z","_","0"-"9",":","'","$","%"])* "\"" > }
+TOKEN : { < COMPONENT_FUNCTION : (<ID> | <INT>) "." <ID> "(" ( (<ID> | <STRING> | <INT> | <HEX> ){1} ("," (<INT> | <ID> | <STRING> | <HEX> ){1} )*)? ")" > }
+//TOKEN : { < FLOATING_POINT_LITERAL : "." > }
+
+
+void PolicyBlock() :
+{}
+{
+	// Reset the parent object - editor
+	(<PS>
+	ProgramName()
+	ProgramBody()
+	<ENDPS>
+	)*
+	<EOF>
+}
+
+
+void ProgramName() :
+{
+	Token t;
+}
+{
+	t = <ID>
+	{ curPS.setName(t.image); }
+}
+
+
+void ProgramBody() :
+{}
+{
+	ControlInfo()
+   ReasoningInfo()
+}
+
+void ControlInfo() :
+{
+	Token t;
+}
+{
+	(t = <ID> | t = <INT>)
+}
+
+
+void ReasoningInfo() :
+{}
+{
+	GroupSet()
+}
+
+
+void GroupSet() :
+{}
+{
+	( Group() )+
+}
+
+
+void Group() :
+{}
+{
+	<GROUP>
+	GroupName()
+	GroupBody()
+}
+
+void GroupName() :
+{
+	Token t;
+	Token p;
+}
+{
+	t = <ID>
+	(p = GroupPriority() )
+	{ 
+		Group newGroup = new Group(t.image, p.image); 
+		curPS.addGroup(newGroup);
+		curPS.setCurGroup(curPS.getCurGroup()+1);
+	}
+}
+
+Token GroupPriority() :
+{ 
+	Token t;
+}
+{
+	t = <INT>
+	{ return t; }
+}
+
+void GroupBody() :
+{}
+{
+	<BEGIN>
+	policyGroup()
+	<END>
+}
+
+
+void policyGroup() :
+{}
+{
+	( 
+		Policy() 
+	)+
+}
+
+void Policy() : 
+{
+	Policy p;
+}
+{
+	p = PolicyID()
+	","
+	PolicyBody(p)
+	";"
+}
+
+
+Policy PolicyID() : 
+{
+	Token t;
+	Policy newPolicy;
+}
+{
+	t = <ID>
+	{
+		// -------- Add the new policy in the pervasive service -------- //
+    newPolicy = new Policy();
+    newPolicy.setPID(t.image);
+    curPS.setMaxPID(t.image);
+    return newPolicy;
+	}
+}
+
+
+void PolicyBody(Policy p) : 
+{}
+{
+	Expression(p)
+}
+
+
+void Expression(Policy p) : 
+{}
+{
+	IFStatement(p)
+}
+
+
+void IFStatement(Policy p) : 
+{}
+{
+	<IF>
+	PolicyCondition(p)
+	
+	<THEN>
+	PolicyAction(p)
+	( Priority(p) )?
+	{
+		curPS.getGroup(curPS.getCurGroup()).addPolicy(p);
+		curPS.setCurPolicy(curPS.getCurPolicy()+1);
+	}
+	//(Uncertainty() )?
+}
+
+
+void PolicyCondition(Policy p) : 
+{}
+{
+	{
+		// Create new Root Condition Group
+		ConditionItem curItem = new ConditionGroup();
+    curItem.setID(0);
+	}
+		
+	ConditionGroup(curItem)
+	
+	{
+		// Add it to the policy description
+		p.setConditions(curItem);
+	}
+}
+
+void ConditionGroup(ConditionItem topItem) :
+{}
+{
+	
+	(
+		<OBR>
+		{
+			// Create new Condition Group
+			ConditionItem cg = new ConditionGroup();		
+		}
+		
+		ConditionGroup(cg)
+		
+		{
+			// Add it to the policy description
+			topItem.addCondition(cg);
+		}
+	  <CBR>
+	  
+	  ( <AND> 
+	  	{((ConditionGroup)topItem).setConjunction("AND");}
+		 	ConditionGroup(topItem)   
+		| <OR>
+		  {((ConditionGroup)topItem).setConjunction("OR");}
+		 	ConditionGroup(topItem) 
+    )?	  		
+	)
+	|
+	(	
+		Condition(topItem)
+	)
+}
+
+
+void Condition(ConditionItem topItem) : 
+{}
+{
+	 {
+		// Create new
+   	ConditionItem curItem = new Condition();
+   }
+   
+   CondLiteral(curItem,0)
+   
+   (<GT>
+   {
+   	((Condition)curItem).setOperator(">");
+   }
+   |
+   <LT>
+   {
+   	((Condition)curItem).setOperator("<");
+   }
+   |
+   <EQ>
+   {
+   	((Condition)curItem).setOperator("==");
+   }
+   |
+   <LE>
+   {
+   	((Condition)curItem).setOperator("<=");
+   }
+   |
+   <GE>
+   {
+   	((Condition)curItem).setOperator(">=");
+   }
+   |
+   <NE>
+   {
+	   ((Condition)curItem).setOperator("!=");
+   })
+   
+   CondLiteral(curItem,1)
+   
+   {
+   	// Add it in the condition Group
+   	topItem.addCondition(curItem);
+   }
+   
+   ( <AND> 
+   	{((ConditionGroup)topItem).setConjunction("AND");}
+   	ConditionGroup(topItem)   
+	 | <OR>
+   	{((ConditionGroup)topItem).setConjunction("OR");}
+   	ConditionGroup(topItem) 
+   )?
+}
+
+void CondLiteral(ConditionItem curItem,int type) :
+{
+	Token t;
+}
+{
+	(( t=<INT> | t=<BOOL> | t=<STRING> | t=<HEX> )
+	{
+		if (type == 0)
+			((Condition)curItem).setVarName(t.image);
+		else
+			((Condition)curItem).setValue(t.image);
+	}
+	|
+	t=<ID>
+	{
+		if (type == 0)
+			((Condition)curItem).setVarName(t.image);
+		else
+			((Condition)curItem).setValue(t.image);
+	})
+	
+}
+
+void PolicyAction(Policy p) : 
+{
+	Token t;
+}
+{
+	
+	t= <COMPONENT_FUNCTION>
+	
+	{p.setAction(t.image);}
+}
+
+
+void Priority(Policy p) :
+{
+	Token t;
+}
+{
+	t=<INT>
+	{p.setPriority(t.image);}
+}
+
+
+/*void Uncertainty() : 
+{
+	Token t;
+}
+{
+	(
+
+	t=<FLOATING_POINT_LITERAL>
+	)
+}*/
+
+
+
+
+
+
+

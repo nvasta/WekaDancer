@@ -17,6 +17,7 @@ import java.util.Vector;
 import org.dancer.PandaLib.Group;
 
 import wekadancer.parsers.*;
+import wekadancer.parsers.J48Parser;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instances;
@@ -145,23 +146,13 @@ public class Weka{
 						tree.toString().indexOf("Number of"));
 		
 		//Give the lines as a reader to the parses
-		//J48Parser parser = new J48Parser();
+		J48Parser parser = new J48Parser(module, new StringReader(rules));
+
 		try {
-			Map<String, DNF> valueTraces = J48Parser.parse(tree, data);
-			
-			for (String value : valueTraces.keySet()) {
-				DNF traces = valueTraces.get(value);
-				System.out.println(value + "(size=" + traces.size() + "): " + traces);
-			}
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
+			parser.RuleSet();
+		} catch (wekadancer.parsers.ParseException e) {
 			e.printStackTrace();
 		}
-		//try {
-		//	parser.RuleSet();
-		//} catch (wekadancer.parsers.ParseException e) {
-		//	e.printStackTrace();
-		//}
 		
 		//Return the output
 		return (new Group());//parser.group;
