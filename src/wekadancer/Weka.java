@@ -4,23 +4,28 @@ package wekadancer;
 import java.io.StringReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.TreeMap;
 import java.util.Vector;
 
-import PandaLib.Group;
-import wekadancer.parsers.*;
+import org.dancer.PandaLib.Group;
 
+import wekadancer.parsers.*;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils.DataSource;
+import weka.classifiers.evaluation.Evaluation;
 import weka.classifiers.rules.JRip;
 import weka.classifiers.trees.J48;
+import context.arch.intelligibility.expression.DNF;
+import context.arch.intelligibility.weka.j48.*;
 
 
 /**
@@ -105,28 +110,61 @@ public class Weka{
 		String[] options = {"-U"};		// unpruned tree
 		J48 tree = new J48(); 		// new instance of tree
 		
+		//Evaluate J48 with cross validation
+		tree.setUnpruned(false);
+		try {
+			
+			Evaluation eval = new Evaluation(data);
+			eval.crossValidateModel(tree, data, 10, new Random(1));
+			System.out.println("Percent correct: " +
+								Double.toString(eval.pctCorrect()));
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		//Build the classifier
 		try {
 			tree.setOptions(options);	// set the options
 			tree.buildClassifier(data); // build classifier
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		} 
-		System.out.println(tree);
+		
+		//Print the tree
+		try {
+			System.out.println(tree);
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}	
+		
 		//Remove the useless info
 		String rules = tree.toString().substring(
 						tree.toString().indexOf("------------------") + 18,
 						tree.toString().indexOf("Number of"));
 		
 		//Give the lines as a reader to the parses
-		J48Parser parser = new J48Parser(module, new StringReader(rules));
+		//J48Parser parser = new J48Parser();
 		try {
-			parser.RuleSet();
-		} catch (wekadancer.parsers.ParseException e) {
+			Map<String, DNF> valueTraces = J48Parser.parse(tree, data);
+			
+			for (String value : valueTraces.keySet()) {
+				DNF traces = valueTraces.get(value);
+				System.out.println(value + "(size=" + traces.size() + "): " + traces);
+			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		//try {
+		//	parser.RuleSet();
+		//} catch (wekadancer.parsers.ParseException e) {
+		//	e.printStackTrace();
+		//}
 		
 		//Return the output
-		return parser.group;
+		return (new Group());//parser.group;
 	}
 
 	
@@ -144,13 +182,28 @@ public class Weka{
 		String[] options = {"-S", "1"};
 		JRip tree = new JRip();         	// new instance of tree
 		
+		//Evaluate J48 with cross validation
+		try {
+			
+			Evaluation eval = new Evaluation(data);
+			eval.crossValidateModel(tree, data, 10, new Random(1));
+			System.out.println("Percent correct: " +
+								Double.toString(eval.pctCorrect()));
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 		try {	
 			tree.setOptions(options);		// set the options
 			tree.buildClassifier(data);		// build classifier
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println(tree);
+		
+		//Print the tree
+		System.out.println(tree);	
+				
 		//Remove the useless info
 		String rules = tree.toString().substring(
 				tree.toString().indexOf("===========")+11,
@@ -187,9 +240,8 @@ public class Weka{
 									ArrayList<String> actions) throws ParseException
 	{
 		//Date Formatters
+		Calendar c = Calendar.getInstance();
 		SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
-		SimpleDateFormat dayFormat = new SimpleDateFormat("dd");
-		SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
 				
 		//Code from http://stackoverflow.com/questions/12118132/adding-a-new-instance-in-weka
 		//Also see Weka's manual Chapter 16
@@ -206,6 +258,7 @@ public class Weka{
 		atts.add(new Attribute("Day", Attribute.NUMERIC));
 		atts.add(new Attribute("Month", Attribute.NUMERIC));
 		atts.add(new Attribute("Time", "HH:mm:ss"));
+		
 		//Add remaining attributes (for in Serie)
 		for (String s:headers)
 			atts.add(new Attribute(s, Attribute.NUMERIC));
@@ -222,7 +275,7 @@ public class Weka{
 		Iterator<Entry<Long, Vector<Double>>> it = data.entrySet().iterator();
 		int counter = 0;
 		while (it.hasNext()) {
-			//Initialize the new instance
+			//Initialise the new instance
 			double[] instanceValue = new double[entry.getValue().size()+3];//plus 3 for Day, Month, Time
 			
 			//Get the values
@@ -230,10 +283,11 @@ public class Weka{
 			
 			//Get the sample date
 			Date sampleDate = new Date(pairs.getKey()*1000);//multiply by 1000 to get milliseconds
+			c.setTime(sampleDate);
 			
 			//Populate the first three entries of the array, since they are fixed to Day-Month-Time format.
-			instanceValue[0] = Integer.parseInt(dayFormat.format(sampleDate));
-			instanceValue[1] = Integer.parseInt(monthFormat.format(sampleDate));
+			instanceValue[0] = c.get(Calendar.DAY_OF_WEEK);
+			instanceValue[1] = c.get(Calendar.MONTH); 
 			instanceValue[2] = dataRaw.attribute(2).parseDate(timeFormat.format(sampleDate));
 			
 			//========= Checking for null values ==========//
@@ -253,7 +307,7 @@ public class Weka{
 
 			//======== Mapping the status/actions =========//
 			//size()-2 is the status. This is for mapping the 
-			//Status index to the actual Status string./Go to 
+			//Status index to the actual Status string. Go to 
 			//the dataRaw instance, under the specific attribute 
 			//index, and get the index of the current Status.
 			instanceValue[instanceValue.length-2] = 

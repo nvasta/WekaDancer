@@ -7,8 +7,9 @@ import java.util.Date;
 import java.util.TreeMap;
 import java.util.Vector;
 
-import PandaLib.Group;
-import PandaLib.PervasiveService;
+import org.dancer.PandaLib.Group;
+import org.dancer.PandaLib.PervasiveService;
+
 import weka.core.Instances;
 
 
@@ -93,7 +94,7 @@ public class Learner implements Runnable {
 	 * </p>
 	 **********************************************************************/
 	public void run() {
-		//Initialize and connect to the database
+		//Initialise and connect to the database
 		PervasiveService ps = new PervasiveService();
 		InfluxDBConn dbConn = new InfluxDBConn(db_host,dbName);
 		dbConn.InfluxDBConnect();
@@ -119,14 +120,18 @@ public class Learner implements Runnable {
 		
 		//Start for-loop for each device
 		for (String device:devices){
-			TreeMap<Long, Vector<Double>> data = dbConn.requestLearnData(series, 
+			InfluxDBData response = dbConn.requestLearnData(series, 
 															headers, 
 															device, 
 															dateFormat.format(from), 
 															dateFormat.format(until));
+			
 			//Calls the Weka Library
 			try {
-				ps.addGroup(callWeka(device,headers, data, actions));
+				ps.addGroup(callWeka(device, 
+									 response.headers, 
+									 response.influx_data, 
+									 actions));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -155,7 +160,7 @@ public class Learner implements Runnable {
 						  TreeMap<Long, Vector<Double>> data, 
 						  ArrayList<String> action) throws Exception
 	{
-		//Initialize local variables
+		//Initialise local variables
 		Weka wk = null;
 		Group rules = null;
 		

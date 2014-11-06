@@ -79,7 +79,7 @@ public class InfluxDBConn {
      **********************************************************************/
     public ArrayList<String> getDistinctItems(String tables, String item,  String from, String until) {
     	//Initialise an array list for the distinct actions
-    	ArrayList<String> actions = new ArrayList<String>();
+    	ArrayList<String> distItems = new ArrayList<String>();
     	
     	//Query the database
     	List<Serie> distinct = influxDB.query(dbName, 
@@ -93,12 +93,12 @@ public class InfluxDBConn {
 			
 			//For each Series, get the rows, containing the distinct actions
 			for (Map<String,Object> row : rows) {
-				actions.add(row.get("distinct").toString());
+				distItems.add(row.get("distinct").toString());
 			}
 		}
 		
 		//Return the outcome
-		return actions;
+		return distItems;
     }
     
     
@@ -157,13 +157,13 @@ public class InfluxDBConn {
      * @param attrs The attributes to be taken into consideration
      * @param from The start time-stamp of the query
      * @param until The stop time-stamp of the query
-     * @return TreeMap
+     * @return InfluxDBData
      **********************************************************************/
-	public TreeMap<Long,Vector<Double>> requestLearnData(String table, 
-														ArrayList<String> attrs,
-														String device,
-														String from, 
-														String until) 
+	public InfluxDBData requestLearnData(String table, 
+										ArrayList<String> attrs,
+										String device,
+										String from, 
+										String until) 
 	{
 		//Create the query for the data
 		String query = new String("select");
@@ -191,12 +191,41 @@ public class InfluxDBConn {
         //Query the database for the attributes and actions
 		List<Serie> result = influxDB.query(dbName, query, TimeUnit.SECONDS);
 		List<Serie> actions = influxDB.query(dbName, act_query, TimeUnit.SECONDS);
-
+		
+		//Create the InfluxDBData reply
+		InfluxDBData response = new InfluxDBData(getKeySet(result), 
+												 series2map(result, actions, classes));
+		
 		//Return the translated data
-		return series2map(result, actions, classes);
+		return response;
 	}
 	
 	
+	/**********************************************************************
+	 * <p>The getKeySet function</p>
+	 * <p>
+	 * Returns the key set of the InfluxDB query result in an array list.
+	 * This is used because the order of the returned results might not
+	 * necessarily follow the specified order. Therefore, it's a good 
+	 * idea to double check.
+	 * </p> 
+	 * @param result
+	 * @return The array list of the result's key set.
+	 */
+	public ArrayList<String> getKeySet(List<Serie> result) {
+		if(result.size()>0) {
+			//Get the first row and remove the time if exists
+			Map<String,Object> row = result.get(0).getRows().get(0);
+			row.remove("time"); 
+			
+			//Return the rest of the key-set 
+			return new ArrayList<String>(row.keySet());
+		}
+		
+		return null;
+	}
+
+
 	/**********************************************************************
 	 * <p>The series2map function</p>
 	 * <p>
@@ -247,6 +276,7 @@ public class InfluxDBConn {
 				//Get the time-stamp of this series point
 				Long timestamp = Double.valueOf(row.get("time").toString()).longValue();				
 				row.remove("time"); /// Fucking SDK8
+
 				//Now that we have the row add the element
 				List<Double> temp = Arrays.asList(row.
 												values().
@@ -391,8 +421,8 @@ public class InfluxDBConn {
     	String DB = new String(args[1]);
     	String series = new String(args[2]);
     	String device = new String(args[3]);
-    	Long from = new Long(args[4]);
-    	Long to = new Long(args[5]);
+    	Long from = new Long(args[4])*1000;
+    	Long to = new Long(args[5])*1000;
     	
 		//Create a new InfluxDB Connector
 		InfluxDBConn dbconn = new InfluxDBConn(host,DB);
@@ -402,8 +432,8 @@ public class InfluxDBConn {
     	
     	//Create the time-stamps that will be used
     	SimpleDateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss");
-    	Date from_date = new Date((long)from*1000);
-    	Date until_date = new Date((long)to*1000);
+    	Date from_date = new Date(from);
+    	Date until_date = new Date(to);
     	
     	//Get the Attribute Names
     	attrs = dbconn.getAttributeNames(series,
@@ -411,18 +441,23 @@ public class InfluxDBConn {
     									dateFormat.format(until_date));
     	
     	//Request the data
-    	map = dbconn.requestLearnData(series, 
-		    							attrs,
-		    							device,
-		    							dateFormat.format(from_date), 
-		    							dateFormat.format(until_date));
+    	InfluxDBData response = dbconn.requestLearnData(series, 
+							    						attrs,
+							    						device,
+							    						dateFormat.format(from_date), 
+							    						dateFormat.format(until_date));
+    	
+    	//Get the response items
+    	attrs = response.headers;
+    	map = response.influx_data;
     	
     	//Print the output
-    	Iterator<Entry<Long, Vector<Double>>> it = map.entrySet().iterator();
+    	Iterator<Entry<Long, Vector<Double>>> it = map.entrySet().iterator();    	
+    	int i=0;
         while (it.hasNext()) {
             Map.Entry<Long, Vector<Double>> pairs = (Map.Entry<Long, Vector<Double>>)it.next();
-            if(pairs.getKey() > 1410732130)
-            	System.out.println( pairs.getKey() + " -> " + pairs.getValue() );
+            System.out.println( pairs.getKey() + " -> " + pairs.getValue() );
+            System.out.println(i++);
             it.remove(); // avoids a ConcurrentModificationException
         }
 	}

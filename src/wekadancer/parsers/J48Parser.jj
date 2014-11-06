@@ -7,7 +7,7 @@ options {
 PARSER_BEGIN(J48Parser)
 	package wekadancer.parsers;
 
-	import PandaLib.*;
+	import org.dancer.PandaLib.*;
 	
 	public class J48Parser {
 	
@@ -37,6 +37,32 @@ PARSER_BEGIN(J48Parser)
 			jj_gen = 0;
 			for (int i = 0; i < jj_la1.length; i++)
 				jj_la1[i] = -1;
+		}
+		
+		public String getSecondsToTime(String milliseconds) {
+		//Local Variables
+		int secs = 0;
+		int mins = 0;
+		int hrs = 0;
+		//System.out.println(milliseconds);
+		//Read the milliseconds
+		long millis = Long.parseLong(milliseconds);
+				
+		//Check that the given time doesn't exceed a day
+		if(millis<86400000) {
+			int seconds =  (int) Math.floor(millis/1000);
+			
+			//Get the measurements
+			secs = seconds%60;
+			mins = (int)(Math.floor(seconds/60)%60);
+			hrs = (int)Math.floor(Math.floor(seconds/60)/60);
+			//System.out.println(hrs+":"+mins+":"+secs);
+		}
+		
+		//Return the number of seconds
+		return "\"" + String.format("%02d", hrs) + ":" + 
+			   String.format("%02d", mins) + ":" + 
+			   String.format("%02d", secs) + "\"";
 		}
 	}
 PARSER_END(J48Parser)
@@ -68,20 +94,21 @@ TOKEN : { < FUNCTION : ( <ID>  | <HEX> ) ("." <ID>)? <OPR> ( (<ID> | <STRING> | 
 void RuleSet() :
 {
 	Condition ci = null;
+	int depth = 1;
 }
 {
 	<THEN>
 	Function()
 	|
 	(
-		Rule(ci)
+		Rule(ci, depth)
 	)*
 	
 	<EOF>
 }
 
 
-void Rule(ConditionItem ci) :
+void Rule(ConditionItem ci, int depth) :
 {
 	Policy policy = null;
 	Condition condition =  null;
@@ -103,6 +130,7 @@ void Rule(ConditionItem ci) :
 				if(ci!=null) {
 					ConditionGroup cg = new ConditionGroup();
 					cg.addCondition(ci);
+					cg.setConjunction("AND");
 					policy.setConditions(cg);
 				}
 			}
@@ -117,8 +145,8 @@ void Rule(ConditionItem ci) :
 			group.addPolicy(policy);
 		}
 		|
-		(
-			(<CHILD>)+
+		LOOKAHEAD(depth) (<CHILD>)+	
+		(	
 			{
 				if(ci instanceof ConditionGroup) {
 					((ConditionGroup)ci).addCondition(condition);
@@ -137,7 +165,7 @@ void Rule(ConditionItem ci) :
 					}
 				}
 			}
-			Rule(ci)
+			Rule(ci, depth+1)
 		)+
 	)
 }
@@ -157,6 +185,12 @@ Condition Condition() :
 	
 	{
 		c = new Condition(id.image,opp.image,v.image);
+		
+		//Correction for the time
+		if(id.image.compareTo("Time") == 0) {
+			c.setValue(getSecondsToTime(v.image));
+		}
+		
 		return c;
 	}
 }
