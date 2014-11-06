@@ -259,7 +259,7 @@ public class InfluxDBConn {
 	{   
         //Initialise a hash-map to hold all the data received
         TreeMap<Long,Vector<Double>> data = new TreeMap<Long,Vector<Double>>();
-        
+  		
         //===================================================================//
         //                      Populate the Tree-Map                        //
         //===================================================================//        
@@ -456,8 +456,8 @@ public class InfluxDBConn {
     	int i=0;
         while (it.hasNext()) {
             Map.Entry<Long, Vector<Double>> pairs = (Map.Entry<Long, Vector<Double>>)it.next();
-            System.out.println( pairs.getKey() + " -> " + pairs.getValue() );
-            System.out.println(i++);
+            //System.out.println( pairs.getKey() + " -> " + pairs.getValue() );
+            //System.out.println(i++);
             it.remove(); // avoids a ConcurrentModificationException
         }
 	}

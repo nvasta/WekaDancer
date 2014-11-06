@@ -125,7 +125,9 @@ public class Learner implements Runnable {
 															device, 
 															dateFormat.format(from), 
 															dateFormat.format(until));
-			
+			for(int i=0;i<actions.size();i++)
+				actions.set(i, actions.get(i).replace("()",""));
+			System.out.println(headers);
 			//Calls the Weka Library
 			try {
 				ps.addGroup(callWeka(device, 
